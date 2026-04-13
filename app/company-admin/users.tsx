@@ -12,14 +12,17 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 
-export default function UserDefinitionScreen({ isTab = false }: { isTab?: boolean }) {
+export default function UserDefinitionScreen({ isTab = false, onSaved }: { isTab?: boolean, onSaved?: () => void }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [loadingDeps, setLoadingDeps] = useState(true);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -29,6 +32,37 @@ export default function UserDefinitionScreen({ isTab = false }: { isTab?: boolea
     phone: '',
     photoBase64: ''
   });
+
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  const fetchDepartments = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: company } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('admin_email', user.email)
+        .single();
+
+      if (company) {
+        const { data: deps } = await supabase
+          .from('P_Departman_Tip')
+          .select('*')
+          .eq('company_id', company.id)
+          .order('name');
+        
+        setDepartments(deps || []);
+      }
+    } catch (e) {
+      console.error("Departman loading error:", e);
+    } finally {
+      setLoadingDeps(false);
+    }
+  };
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -46,17 +80,43 @@ export default function UserDefinitionScreen({ isTab = false }: { isTab?: boolea
   };
 
   const handleSave = async () => {
-    if (!formData.firstName || !formData.lastName || !formData.email) {
-      Alert.alert('Hata', 'İsim, Soyisim ve E-posta alanları zorunludur.');
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.department) {
+      Alert.alert('Hata', 'Lütfen tüm zorunlu alanları (Ad, Soyad, E-posta ve Departman) doldurun.');
       return;
     }
 
     setLoading(true);
-    // Simülasyon Veri Kaydı
-    setTimeout(() => {
+
+    try {
+      // 1. ADIM: Şirket ID Bul
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: company } = await supabase.from('companies').select('id').eq('admin_email', user?.email).single();
+
+      if (!company) throw new Error("Şirket bulunamadı.");
+
+      // 2. ADIM: Staff Tablosuna Kaydet
+      const { error } = await supabase.from('staff').insert({
+        company_id: company.id,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        department: formData.department,
+        photo_url: formData.photoBase64 ? `data:image/png;base64,${formData.photoBase64}` : null,
+        is_active: true
+      });
+
+      if (error) throw error;
+
+      Alert.alert('Başarılı', 'Kullanıcı başarıyla kaydedildi.');
+      if (onSaved) onSaved();
+      else if (!isTab) router.back();
+
+    } catch (err: any) {
+      Alert.alert('Hata', err.message);
+    } finally {
       setLoading(false);
-      Alert.alert('Başarılı', 'Kullanıcı tanımlaması başarıyla yapıldı.');
-    }, 1500);
+    }
   };
 
   const MainContainer = isTab ? View : ScrollView;
@@ -119,13 +179,24 @@ export default function UserDefinitionScreen({ isTab = false }: { isTab?: boolea
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Departman / Görev</Text>
-              <TextInput 
-                style={styles.input} 
-                value={formData.department} 
-                onChangeText={t => setFormData({...formData, department: t})}
-                placeholder="Örn: Muhasebe, Satış Temsilcisi vb."
-              />
+              <Text style={styles.label}>Departman</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={formData.department}
+                  onValueChange={(val) => setFormData({...formData, department: val})}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Departman Seçiniz..." value="" color="#94A3B8" />
+                  {departments.map((dep) => (
+                    <Picker.Item key={dep.id} label={dep.name} value={dep.name} />
+                  ))}
+                </Picker>
+              </View>
+              {departments.length === 0 && !loadingDeps && (
+                 <Text style={{ fontSize: 11, color: '#EF4444', marginTop: 4 }}>
+                   ⚠️ Hiç departman tanımlanmamış. Lütfen önce departmanları ekleyin.
+                 </Text>
+              )}
             </View>
 
             <View style={styles.row}>
@@ -149,15 +220,6 @@ export default function UserDefinitionScreen({ isTab = false }: { isTab?: boolea
                   placeholder="05XX XXX XX XX"
                 />
               </View>
-            </View>
-          </View>
-
-          {/* Yetkilendirme Başlığı */}
-          <View style={styles.divider} />
-          <View style={styles.authSection}>
-            <Text style={styles.authTitle}>🔐 Yetkilendirme Ayarları</Text>
-            <View style={styles.authPlaceholder}>
-              <Text style={styles.authPlaceholderText}>Yetkilendirme modülleri ve rol tanımları çok yakında burada yapılandırılabilecek.</Text>
             </View>
           </View>
 
@@ -192,10 +254,9 @@ const styles = StyleSheet.create({
   inputGroup: { marginBottom: 25 },
   label: { fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 10 },
   input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, height: 52, paddingHorizontal: 16, fontSize: 15, color: '#0F172A' },
+  pickerContainer: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, height: 52, justifyContent: 'center', overflow: 'hidden' },
+  picker: { width: '100%', height: 52 },
   divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 10 },
-  authSection: { marginTop: 20, marginBottom: 30 },
-  authTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 15 },
-  authPlaceholder: { backgroundColor: '#F1F5F9', borderRadius: 12, padding: 20, borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5E1' },
   authPlaceholderText: { fontSize: 14, color: '#64748B', fontStyle: 'italic', textAlign: 'center' },
   saveBtn: { backgroundColor: '#0F172A', borderRadius: 16, height: 60, justifyContent: 'center', alignItems: 'center', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 15, elevation: 5 },
   saveBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' }
