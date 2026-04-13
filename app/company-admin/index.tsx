@@ -23,6 +23,7 @@ export default function CompanyAdminDashboard() {
   const [viewMode, setViewMode] = useState<'list' | 'add'>('list');
   const [companyInfo, setCompanyInfo] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -114,7 +115,7 @@ export default function CompanyAdminDashboard() {
           </View>
           
           {activeTab === 'users' && viewMode === 'list' && (
-            <TouchableOpacity style={styles.addBtn} onPress={() => setViewMode('add')}>
+            <TouchableOpacity style={styles.addBtn} onPress={() => { setSelectedUser(null); setViewMode('add'); }}>
               <Text style={styles.addBtnText}>+ Yeni Kullanıcı Tanımla</Text>
             </TouchableOpacity>
           )}
@@ -152,6 +153,9 @@ export default function CompanyAdminDashboard() {
                     </View>
                   </View>
                   <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+                    <TouchableOpacity onPress={() => { setSelectedUser(u); setViewMode('add'); }}>
+                      <Text style={{ fontSize: 18 }}>✏️</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => toggleUserStatus(u.id, u.is_active)}>
                       <Text style={{ fontSize: 18 }}>{u.is_active ? '⏸️' : '▶️'}</Text>
                     </TouchableOpacity>
@@ -167,8 +171,10 @@ export default function CompanyAdminDashboard() {
           {activeTab === 'users' && viewMode === 'add' && (
             <UserDefinitionForm 
               isTab={true} 
+              initialData={selectedUser}
               onSaved={() => { 
                 setViewMode('list'); 
+                setSelectedUser(null);
                 fetchData(); 
               }} 
             />

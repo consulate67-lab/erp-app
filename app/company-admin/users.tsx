@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 
-export default function UserDefinitionScreen({ isTab = false, onSaved }: { isTab?: boolean, onSaved?: () => void }) {
+export default function UserDefinitionScreen({ isTab = false, onSaved, initialData }: { isTab?: boolean, onSaved?: () => void, initialData?: any }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -25,11 +25,11 @@ export default function UserDefinitionScreen({ isTab = false, onSaved }: { isTab
   const [loadingDeps, setLoadingDeps] = useState(true);
 
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    department: '',
-    email: '',
-    phone: '',
+    firstName: initialData?.first_name || '',
+    lastName: initialData?.last_name || '',
+    department: initialData?.department || '',
+    email: initialData?.email || '',
+    phone: initialData?.phone || '',
     photoBase64: ''
   });
 
@@ -110,8 +110,8 @@ export default function UserDefinitionScreen({ isTab = false, onSaved }: { isTab
   };
 
   const handleSave = async () => {
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.department) {
-      Alert.alert('Hata', 'Lütfen tüm zorunlu alanları (Ad, Soyad, E-posta ve Departman) doldurun.');
+    if (!formData.firstName || !formData.lastName || !formData.email) {
+      Alert.alert('Hata', 'Lütfen tüm zorunlu alanları (Ad, Soyad ve E-posta) doldurun.');
       return;
     }
 
@@ -124,17 +124,21 @@ export default function UserDefinitionScreen({ isTab = false, onSaved }: { isTab
 
       if (!company) throw new Error("Şirket bulunamadı.");
 
-      // 2. ADIM: Staff Tablosuna Kaydet
-      const { error } = await supabase.from('staff').insert({
+      // 2. ADIM: Staff Tablosuna Kaydet veya Güncelle
+      const staffData = {
         company_id: company.id,
         first_name: formData.firstName,
         last_name: formData.lastName,
         email: formData.email,
         phone: formData.phone,
         department: formData.department,
-        photo_url: formData.photoBase64 ? `data:image/png;base64,${formData.photoBase64}` : null,
-        is_active: true
-      });
+        photo_url: formData.photoBase64 ? `data:image/png;base64,${formData.photoBase64}` : (initialData?.photo_url || null),
+        is_active: initialData ? initialData.is_active : true
+      };
+
+      const { error } = initialData 
+        ? await supabase.from('staff').update(staffData).eq('id', initialData.id)
+        : await supabase.from('staff').insert(staffData);
 
       if (error) throw error;
 
