@@ -9,7 +9,8 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  Platform
+  Platform,
+  Alert
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
@@ -23,12 +24,16 @@ interface Company {
   tax_number: string;
   admin_email: string;
   license_end_date: string;
+  db_host: string;
+  db_name: string;
+  is_active: boolean;
 }
 
-export default function SuperAdminDataGrid() {
+export default function SuperAdminDashboard() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [testingId, setTestingId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -39,7 +44,7 @@ export default function SuperAdminDataGrid() {
     setLoading(true);
     const { data, error } = await supabase
       .from('companies')
-      .select('id, name, city, district, logo_url, tax_number, admin_email, license_end_date')
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -50,29 +55,35 @@ export default function SuperAdminDataGrid() {
     setLoading(false);
   };
 
-  // Raporlama İstatistikleri
+  const testSqlConnection = async (company: Company) => {
+    setTestingId(company.id);
+    // Simülasyon: 1.5 saniye bekle
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setTestingId(null);
+    Alert.alert('SQL Bağlantı Testi', `${company.db_host} sunucusuna bağlantı başarılı! (Mock)`);
+  };
+
   const stats = useMemo(() => {
     const now = new Date();
     const thirtyDaysLater = new Date();
     thirtyDaysLater.setDate(now.getDate() + 30);
 
     const total = companies.length;
-    const active = companies.filter(c => new Date(c.license_end_date) >= now).length;
+    const active = companies.filter(c => c.is_active && new Date(c.license_end_date) >= now).length;
     const expiringSoon = companies.filter(c => {
       const d = new Date(c.license_end_date);
       return d >= now && d <= thirtyDaysLater;
     }).length;
-    const expired = total - active;
+    const passive = companies.filter(c => !c.is_active).length;
 
-    return { total, active, expiringSoon, expired };
+    return { total, active, expiringSoon, passive };
   }, [companies]);
 
-  // Arama Filtresi
   const filteredCompanies = useMemo(() => {
     return companies.filter(c => 
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.admin_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.city?.toLowerCase().includes(searchQuery.toLowerCase())
+      c.db_host?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [companies, searchQuery]);
 
@@ -82,37 +93,57 @@ export default function SuperAdminDataGrid() {
 
     return (
       <View style={[styles.gridRow, { backgroundColor: rowColor }]}>
-        <View style={[styles.cell, { flex: 0.8 }]}>
+        <View style={[styles.cell, { flex: 0.6 }]}>
           {item.logo_url ? (
             <Image source={{ uri: item.logo_url }} style={styles.logo} />
           ) : (
             <View style={styles.placeholderLogo}><Text style={styles.placeholderLogoText}>{item.name.charAt(0)}</Text></View>
           )}
         </View>
+
         <View style={[styles.cell, { flex: 2 }]}>
-          <Text style={styles.cellTextBold}>{item.name}</Text>
-          <Text style={styles.cellTextSub}>{item.admin_email}</Text>
+          <Text style={styles.cellTextBold} numberOfLines={1}>{item.name}</Text>
+          <Text style={styles.cellTextSub} numberOfLines={1}>{item.admin_email}</Text>
         </View>
+
         <View style={[styles.cell, { flex: 1.5 }]}>
+          <Text style={styles.cellText}>{item.db_host || 'Tanımsız'}</Text>
+          <Text style={styles.cellTextSub}>{item.db_name || '-'}</Text>
+        </View>
+
+        <View style={[styles.cell, { flex: 1.2 }]}>
           <Text style={styles.cellText}>{item.city}</Text>
           <Text style={styles.cellTextSub}>{item.district}</Text>
         </View>
+
         <View style={[styles.cell, { flex: 1.2 }]}>
-          <Text style={styles.cellText}>{item.tax_number || '-'}</Text>
+          <Text style={[styles.cellText, isLicenseExpired && { color: '#EF4444', fontWeight: 'bold' }]}>
+            {item.license_end_date}
+          </Text>
         </View>
-        <View style={[styles.cell, { flex: 1.5 }]}>
-          <View style={[styles.statusBadge, isLicenseExpired ? styles.badgeExpired : styles.badgeActive]}>
-            <Text style={[styles.statusText, isLicenseExpired && { color: '#B91C1C' }]}>
-              {isLicenseExpired ? "Süresi Doldu" : item.license_end_date}
+
+        <View style={[styles.cell, { flex: 1 }]}>
+          <View style={[styles.statusBadge, { backgroundColor: item.is_active ? '#D1FAE5' : '#FEE2E2' }]}>
+            <Text style={[styles.statusText, { color: item.is_active ? '#047857' : '#B91C1C' }]}>
+              {item.is_active ? 'Aktif' : 'Pasif'}
             </Text>
           </View>
         </View>
-        <View style={[styles.cell, { flex: 1, alignItems: 'center' }]}>
+
+        <View style={[styles.cell, { flex: 1.4, flexDirection: 'row', gap: 8 }]}>
+           <TouchableOpacity 
+            style={[styles.smallBtn, { backgroundColor: '#F0F9FF' }]} 
+            onPress={() => testSqlConnection(item)}
+            disabled={testingId === item.id}
+          >
+            {testingId === item.id ? <ActivityIndicator size="small" color="#0369A1" /> : <Text style={[styles.smallBtnText, { color: '#0369A1' }]}>⚡ Test</Text>}
+          </TouchableOpacity>
+
           <TouchableOpacity 
-            style={styles.actionBtn} 
+            style={[styles.smallBtn, { backgroundColor: '#F1F5F9' }]} 
             onPress={() => router.push(`/super-admin/company/${item.id}` as any)}
           >
-            <Text style={styles.actionBtnText}>Yönet</Text>
+            <Text style={[styles.smallBtnText, { color: '#475569' }]}>Yönet</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -120,196 +151,115 @@ export default function SuperAdminDataGrid() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} stickyHeaderIndices={[0]}>
+      {/* Header Section */}
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.pageTitle}>Panel Yönetimi</Text>
-          <Text style={styles.pageDesc}>Firma arama, takip ve raporlama merkezi.</Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.title}>ERP Kontrol Merkezi</Text>
+            <Text style={styles.subtitle}>Sistem genelindeki tüm şirketlerin canlı takibi</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.addBtn}
+            onPress={() => router.push('/super-admin/add-company' as any)}
+          >
+            <Text style={styles.addBtnText}>+ Yeni Şirket Ekle</Text>
+          </TouchableOpacity>
         </View>
-        
-        <View style={styles.searchContainer}>
+      </View>
+
+      <View style={styles.content}>
+        {/* Statistics Row */}
+        <View style={styles.statsRow}>
+          <StatCard label="Toplam Şirket" value={stats.total} color="#475569" />
+          <StatCard label="Aktif Lisans" value={stats.active} color="#10B981" />
+          <StatCard label="Kritik (30 Gün)" value={stats.expiringSoon} color="#F59E0B" />
+          <StatCard label="Durdurulanlar" value={stats.passive} color="#EF4444" />
+        </View>
+
+        {/* Search & Filter Bar */}
+        <View style={styles.searchSection}>
           <TextInput 
             style={styles.searchInput}
-            placeholder="🔍 Firma adı, e-posta veya şehir ile ara..."
+            placeholder="Şirket adı, Host adresi veya yetkili e-postası ile hızlı ara..."
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
         </View>
 
-        <TouchableOpacity 
-          style={styles.addButton} 
-          onPress={() => router.push('/super-admin/add-company' as any)}
-        >
-          <Text style={styles.addButtonText}>+ Yeni Firma Kur</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-        <View style={styles.mainLayout}>
-          
-          {/* Sol Taraf: DataGrid */}
-          <View style={styles.dataGridWrapper}>
-            <Text style={styles.sectionTitle}>Tüm Kayıtlı Firmalar ({filteredCompanies.length})</Text>
-            {loading ? (
-              <ActivityIndicator size="large" color="#0F172A" style={{ marginTop: 50 }} />
-            ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-                <View style={styles.gridTable}>
-                  <View style={styles.gridHeader}>
-                    <Text style={[styles.headerCell, { flex: 0.8 }]}>Logo</Text>
-                    <Text style={[styles.headerCell, { flex: 2 }]}>Firma & Yetkili</Text>
-                    <Text style={[styles.headerCell, { flex: 1.5 }]}>Lokasyon</Text>
-                    <Text style={[styles.headerCell, { flex: 1.2 }]}>Vergi No</Text>
-                    <Text style={[styles.headerCell, { flex: 1.5 }]}>Lisans</Text>
-                    <Text style={[styles.headerCell, { flex: 1, textAlign: 'center' }]}>İşlem</Text>
-                  </View>
-                  <FlatList
-                    data={filteredCompanies}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderGridRow}
-                    scrollEnabled={false} // Container ScrollView kullandığı için
-                    ListEmptyComponent={
-                      <View style={styles.emptyState}>
-                        <Text style={styles.emptyStateText}>Aradığınız kriterde firma bulunamadı.</Text>
-                      </View>
-                    }
-                  />
+        {/* DataGrid Area */}
+        <View style={styles.gridWrapper}>
+          <Text style={styles.gridTitle}>İşletme Listesi</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#0F172A" style={{ marginVertical: 100 }} />
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+              <View style={styles.table}>
+                <View style={styles.tableHead}>
+                  <Text style={[styles.headCell, { flex: 0.6 }]}>Logo</Text>
+                  <Text style={[styles.headCell, { flex: 2 }]}>Şirket Künyesi</Text>
+                  <Text style={[styles.headCell, { flex: 1.5 }]}>SQL Bağlantısı</Text>
+                  <Text style={[styles.headCell, { flex: 1.2 }]}>Lokasyon</Text>
+                  <Text style={[styles.headCell, { flex: 1.2 }]}>Lisans Bitiş</Text>
+                  <Text style={[styles.headCell, { flex: 1 }]}>Durum</Text>
+                  <Text style={[styles.headCell, { flex: 1.4, textAlign: 'center' }]}>İşlemler</Text>
                 </View>
-              </ScrollView>
-            )}
-          </View>
-
-          {/* Sağ Taraf: Raporlar ve Widgets */}
-          <View style={styles.sidebar}>
-            <Text style={styles.sectionTitle}>Canlı Raporlar</Text>
-            
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Toplam Firma</Text>
-              <Text style={styles.statValue}>{stats.total}</Text>
-            </View>
-
-            <View style={[styles.statCard, { borderLeftColor: '#10B981' }]}>
-              <Text style={styles.statLabel}>Aktif Lisanslar</Text>
-              <Text style={[styles.statValue, { color: '#10B981' }]}>{stats.active}</Text>
-            </View>
-
-            <View style={[styles.statCard, { borderLeftColor: '#F59E0B' }]}>
-              <Text style={styles.statLabel}>Yaklaşan Bitişler (30 Gün)</Text>
-              <Text style={[styles.statValue, { color: '#F59E0B' }]}>{stats.expiringSoon}</Text>
-              <Text style={styles.statSubText}>Kritik Takip Gerekli</Text>
-            </View>
-
-            <View style={[styles.statCard, { borderLeftColor: '#EF4444' }]}>
-              <Text style={styles.statLabel}>Süresi Dolanlar</Text>
-              <Text style={[styles.statValue, { color: '#EF4444' }]}>{stats.expired}</Text>
-            </View>
-
-            <View style={styles.promoCard}>
-              <Text style={styles.promoTitle}>Hızlı İpucu</Text>
-              <Text style={styles.promoText}>Lisans süresi bitmek üzere olan firmaları 'Yönet' butonundan tek tıkla güncelleyebilirsiniz.</Text>
-            </View>
-          </View>
-
+                <FlatList
+                  data={filteredCompanies}
+                  keyExtractor={(item) => item.id}
+                  renderItem={renderGridRow}
+                  scrollEnabled={false}
+                  ListEmptyComponent={<Text style={styles.emptyText}>Sonuç bulunamadı.</Text>}
+                />
+              </View>
+            </ScrollView>
+          )}
         </View>
-      </ScrollView>
+      </View>
+    </ScrollView>
+  );
+}
+
+function StatCard({ label, value, color }: { label: string, value: number, color: string }) {
+  return (
+    <View style={[styles.statCard, { borderBottomColor: color }]}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={[styles.statValue, { color }]}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F1F5F9' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 30,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    flexWrap: 'wrap',
-    gap: 20
-  },
-  pageTitle: { fontSize: 28, fontWeight: '800', color: '#0F172A' },
-  pageDesc: { fontSize: 15, color: '#64748B', marginTop: 4 },
-  searchContainer: { flex: 2, minWidth: 300 },
-  searchInput: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    height: 48,
-    paddingHorizontal: 16,
-    fontSize: 15,
-  },
-  addButton: {
-    backgroundColor: '#0F172A',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  addButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  body: { flex: 1 },
-  bodyContent: { padding: 30 },
-  mainLayout: { flexDirection: 'row', gap: 30, flexWrap: 'wrap' },
-  dataGridWrapper: { flex: 3, minWidth: 600 },
-  sidebar: { flex: 1, minWidth: 300 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B', marginBottom: 20 },
-  gridTable: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    width: 1000
-  },
-  gridHeader: {
-    flexDirection: 'row',
-    backgroundColor: '#F8FAFC',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-  },
-  headerCell: { fontSize: 13, fontWeight: '700', color: '#64748B', textTransform: 'uppercase' },
-  gridRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: { backgroundColor: '#FFFFFF', padding: 30, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', zIndex: 10 },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  title: { fontSize: 26, fontWeight: '900', color: '#0F172A' },
+  subtitle: { fontSize: 14, color: '#64748B', marginTop: 4 },
+  addBtn: { backgroundColor: '#0F172A', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 },
+  addBtnText: { color: '#FFFFFF', fontWeight: '700' },
+  content: { padding: 30 },
+  statsRow: { flexDirection: 'row', gap: 20, marginBottom: 30, flexWrap: 'wrap' },
+  statCard: { flex: 1, minWidth: 200, backgroundColor: '#FFFFFF', padding: 20, borderRadius: 16, borderBottomWidth: 4, elevation: 2 },
+  statLabel: { fontSize: 12, fontWeight: '700', color: '#64748B', textTransform: 'uppercase' },
+  statValue: { fontSize: 32, fontWeight: '800', marginTop: 8 },
+  searchSection: { marginBottom: 30 },
+  searchInput: { backgroundColor: '#FFFFFF', height: 56, borderRadius: 16, paddingHorizontal: 20, fontSize: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10 },
+  gridWrapper: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: '#E2E8F0' },
+  gridTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 20 },
+  table: { minWidth: 1100 },
+  tableHead: { flexDirection: 'row', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingHorizontal: 12 },
+  headCell: { fontSize: 12, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase' },
+  gridRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   cell: { justifyContent: 'center' },
-  logo: { width: 44, height: 44, borderRadius: 10, backgroundColor: '#F1F5F9' },
-  placeholderLogo: { width: 44, height: 44, borderRadius: 10, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center' },
-  placeholderLogoText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
-  cellTextBold: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
-  cellText: { fontSize: 15, color: '#334155' },
-  cellTextSub: { fontSize: 13, color: '#94A3B8' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: '#D1FAE5' },
-  badgeActive: { backgroundColor: '#D1FAE5' },
-  badgeExpired: { backgroundColor: '#FEE2E2' },
-  statusText: { fontSize: 12, fontWeight: '700', color: '#047857' },
-  actionBtn: { backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  actionBtnText: { color: '#4F46E5', fontSize: 14, fontWeight: '700' },
-  statCard: {
-    backgroundColor: '#FFFFFF',
-    padding: 24,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderLeftWidth: 6,
-    borderLeftColor: '#3B82F6',
-    marginBottom: 20,
-  },
-  statLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', textTransform: 'uppercase' },
-  statValue: { fontSize: 32, fontWeight: '800', color: '#0F172A', marginTop: 8 },
-  statSubText: { fontSize: 12, color: '#F59E0B', marginTop: 4, fontWeight: '600' },
-  promoCard: {
-    backgroundColor: '#0F172A',
-    padding: 24,
-    borderRadius: 16,
-  },
-  promoTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', marginBottom: 8 },
-  promoText: { color: '#94A3B8', fontSize: 14, lineHeight: 20 },
-  emptyState: { padding: 40, alignItems: 'center' },
-  emptyStateText: { color: '#94A3B8' }
+  logo: { width: 40, height: 40, borderRadius: 10 },
+  placeholderLogo: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center' },
+  placeholderLogoText: { color: '#FFFFFF', fontWeight: '900' },
+  cellTextBold: { fontSize: 15, fontWeight: '700', color: '#1E293B' },
+  cellText: { fontSize: 14, color: '#334155' },
+  cellTextSub: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  statusText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  smallBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  smallBtnText: { fontSize: 13, fontWeight: '700' },
+  emptyText: { textAlign: 'center', padding: 50, color: '#94A3B8' }
 });
