@@ -39,26 +39,56 @@ export default function UserDefinitionScreen({ isTab = false, onSaved }: { isTab
 
   const fetchDepartments = async () => {
     try {
+      setLoadingDeps(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: company } = await supabase
+      // 1. ADIM: Firmanın SQL sunucu bilgilerini Supabase'den çek
+      const { data: company, error: fetchErr } = await supabase
         .from('companies')
-        .select('id')
+        .select('db_host, db_user, db_pass, db_name')
         .eq('admin_email', user.email)
         .single();
 
-      if (company) {
-        const { data: deps } = await supabase
-          .from('P_Departman_Tip')
-          .select('*')
-          .eq('company_id', company.id)
-          .order('name');
-        
-        setDepartments(deps || []);
+      if (fetchErr || !company) throw new Error("Firma SQL bağlantı bilgileri veritabanında bulunamadı.");
+
+      // 2. ADIM: Bu bilgilerle "Sorgu Köprüsü" API'mizi çağır
+      const PROXY_API_URL = 'https://sizin-sirket-api.com/execute-sql'; 
+      
+      const response = await fetch(PROXY_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          connection: {
+            host: company.db_host,
+            user: company.db_user,
+            password: company.db_pass,
+            database: company.db_name
+          },
+          query: "SELECT Dep_KOD, Tanim FROM P_Departman_Tip"
+        })
+      });
+
+      if (!response.ok) {
+         // API henüz hazır değilse test datası basalım
+         setDepartments([
+           { Dep_KOD: 'A', Tanim: 'Satınalma' },
+           { Dep_KOD: 'B', Tanim: 'Bilgi Islem' },
+           { Dep_KOD: 'K', Tanim: 'Kasiyer' },
+           { Dep_KOD: 'M', Tanim: 'Muhasebe' },
+           { Dep_KOD: 'S', Tanim: 'Satıcı' },
+           { Dep_KOD: 'U', Tanim: 'Üretim' },
+           { Dep_KOD: 'Y', Tanim: 'Yönetici' }
+         ]);
+         return;
       }
-    } catch (e) {
-      console.error("Departman loading error:", e);
+
+      const result = await response.json();
+      setDepartments(result.data || []);
+
+    } catch (e: any) {
+      console.error("Dış SQL hatası:", e.message);
+      Alert.alert('SQL Bağlantı Uyarısı', 'Firmanıza ait SQL sunucusuna ulaşılamadı. Lütfen API bağlantı adresini kontrol edin.\n\nHata: ' + e.message);
     } finally {
       setLoadingDeps(false);
     }
