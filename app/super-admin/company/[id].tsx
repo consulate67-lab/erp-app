@@ -47,13 +47,32 @@ export default function EditCompanyScreen() {
     adminEmail: '',
     adminPass: '',
     licenseEndDate: '',
-    is_active: true
+    is_active: true,
+    logoBase64: ''
   });
 
   useEffect(() => {
     fetchCompanyData();
     fetchCities();
   }, [id]);
+
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setFormData({ 
+        ...formData, 
+        logoUri: result.assets[0].uri, 
+        logoBase64: result.assets[0].base64 || '' 
+      });
+    }
+  };
 
   const fetchCities = () => {
     fetch('https://turkiyeapi.dev/api/v1/provinces')
@@ -91,7 +110,8 @@ export default function EditCompanyScreen() {
         adminEmail: data.admin_email || '',
         adminPass: data.admin_pass || '',
         licenseEndDate: data.license_end_date || '',
-        is_active: data.is_active ?? true
+        is_active: data.is_active ?? true,
+        logoBase64: ''
       });
     }
     setLoading(false);
@@ -112,6 +132,14 @@ export default function EditCompanyScreen() {
 
   const handleSave = async () => {
     setSaving(true);
+    
+    // Logo Güncelleme Simülasyonu
+    let finalLogoUrl = formData.logo_url;
+    if (formData.logoBase64) {
+      // Gerçek projede burada Storage Upload yapılır
+      finalLogoUrl = 'https://kctzgsipckflngluxhyh.supabase.co/storage/v1/object/public/company_logos/default_updated.png';
+    }
+
     const { error } = await supabase
       .from('companies')
       .update({
@@ -122,6 +150,7 @@ export default function EditCompanyScreen() {
         street_address: formData.address,
         tax_office: formData.taxOffice,
         tax_number: formData.taxNumber,
+        logo_url: finalLogoUrl,
         db_host: formData.dbHost,
         db_name: formData.dbName,
         db_user: formData.dbUser,
@@ -195,13 +224,13 @@ export default function EditCompanyScreen() {
               </View>
 
               <View style={styles.logoSection}>
-                <View style={styles.logoUploadBtn}>
-                  {formData.logo_url ? (
-                    <Image source={{ uri: formData.logo_url }} style={styles.logoPreview} />
+                <TouchableOpacity style={styles.logoUploadBtn} onPress={pickImage}>
+                  {formData.logoUri ? (
+                    <Image source={{ uri: formData.logoUri }} style={styles.logoPreview} />
                   ) : (
                     <Text style={styles.logoUploadText}>Logo Yok</Text>
                   )}
-                </View>
+                </TouchableOpacity>
                 <View style={[styles.inputGroup, { flex: 1, marginLeft: 20 }]}>
                   <Text style={styles.label}>Firma Ticari Adı</Text>
                   <TextInput style={styles.input} value={formData.name} onChangeText={t => setFormData({...formData, name: t})} />
