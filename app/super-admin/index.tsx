@@ -57,10 +57,14 @@ export default function SuperAdminDashboard() {
 
   const testSqlConnection = async (company: Company) => {
     setTestingId(company.id);
-    // Simülasyon: 1.5 saniye bekle
     await new Promise(resolve => setTimeout(resolve, 1500));
     setTestingId(null);
-    Alert.alert('Sonuç', 'Bağlantı Başarılı ✅');
+    const msg = 'Bağlantı Başarılı ✅';
+    if (Platform.OS === 'web') {
+      window.alert(msg);
+    } else {
+      Alert.alert('Sonuç', msg);
+    }
   };
 
   const stats = useMemo(() => {

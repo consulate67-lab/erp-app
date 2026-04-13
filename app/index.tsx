@@ -28,7 +28,13 @@ export default function LoginScreen() {
     if (error) {
       Alert.alert('Giriş Başarısız', error.message);
     } else {
-      router.replace('/super-admin' as any);
+      // Basit Rol Kontrolü Simülasyonu
+      if (email.toLowerCase().includes('superadmin')) {
+        router.replace('/super-admin' as any);
+      } else {
+        // Firma Admini veya Personel ise Kullanıcı Tanıtım ekranına yönlendir
+        router.replace('/company-admin/users' as any);
+      }
     }
   }
 

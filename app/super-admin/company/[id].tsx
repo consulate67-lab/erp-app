@@ -58,15 +58,18 @@ export default function EditCompanyScreen() {
   }, [id]);
 
   const testSqlConnection = async () => {
+    const missingMsg = 'Lütfen tüm SQL bilgilerini doldurun.';
     if (!formData.dbHost || !formData.dbName || !formData.dbUser || !formData.dbPass) {
-      Alert.alert('Eksik Bilgi', 'Lütfen tüm SQL bilgilerini doldurun.');
+      if (Platform.OS === 'web') window.alert(missingMsg);
+      else Alert.alert('Eksik Bilgi', missingMsg);
       return;
     }
     setTestLoading(true);
-    // Simülasyon: 2 saniye bekle
     await new Promise(resolve => setTimeout(resolve, 2000));
     setTestLoading(false);
-    Alert.alert('Sonuç', 'Bağlantı Başarılı ✅');
+    const successMsg = 'Bağlantı Başarılı ✅';
+    if (Platform.OS === 'web') window.alert(successMsg);
+    else Alert.alert('Sonuç', successMsg);
   };
 
   const pickImage = async () => {
