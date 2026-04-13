@@ -26,13 +26,14 @@ export default function LoginScreen() {
     setLoading(false);
     
     if (error) {
-      Alert.alert('Giriş Başarısız', error.message);
+       console.error("Login Error:", error.message);
+       if (Platform.OS === 'web') window.alert('Giriş Başarısız: ' + error.message);
+       else Alert.alert('Giriş Başarısız', error.message);
     } else {
-      // Basit Rol Kontrolü Simülasyonu
-      if (email.toLowerCase().includes('admin')) {
+      // Kesin Rol Ayrımı: admin@erp.com ise Süper Admin, diğerleri Firma Admin
+      if (email.toLowerCase() === 'admin@erp.com') {
         router.replace('/super-admin' as any);
       } else {
-        // Firma Admini veya Personel ise Ana Panel'e yönlendir
         router.replace('/company-admin' as any);
       }
     }

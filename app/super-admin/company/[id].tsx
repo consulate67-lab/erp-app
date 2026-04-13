@@ -149,7 +149,7 @@ export default function EditCompanyScreen() {
   const handleSave = async () => {
     setSaving(true);
     
-    // 1. ADIM: Admin kullanıcısı Auth sisteminde yoksa oluştur (Onarım ve Hazırlık)
+    // 1. ADIM: Admin kullanıcısını Auth sisteminde kaydetmeyi/vermeyi dene
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: formData.adminEmail,
       password: formData.adminPass,
@@ -161,41 +161,54 @@ export default function EditCompanyScreen() {
       }
     });
 
-    // 2. ADIM: Veritabanını Güncelle
-    let finalLogoUrl = formData.logo_url;
-    if (formData.logoBase64) {
-      finalLogoUrl = 'https://kctzgsipckflngluxhyh.supabase.co/storage/v1/object/public/company_logos/default_updated.png';
+    // 2. ADIM: Veritabanı verisini hazırla
+    const updateData: any = {
+      name: formData.name,
+      country: formData.country,
+      city: formData.city,
+      district: formData.district,
+      street_address: formData.address,
+      tax_office: formData.taxOffice,
+      tax_number: formData.taxNumber,
+      logo_url: formData.logo_url,
+      db_host: formData.dbHost,
+      db_name: formData.dbName,
+      db_user: formData.dbUser,
+      db_pass: formData.dbPass,
+      admin_email: formData.adminEmail,
+      admin_pass: formData.adminPass,
+      license_end_date: formData.licenseEndDate,
+      is_active: formData.is_active,
+    };
+
+    // Sadece yeni bir kullanıcı oluştuysa ID'yi mühürle
+    if (authData.user) {
+      updateData.auth_admin_id = authData.user.id;
     }
 
     const { error } = await supabase
       .from('companies')
-      .update({
-        name: formData.name,
-        country: formData.country,
-        city: formData.city,
-        district: formData.district,
-        street_address: formData.address,
-        tax_office: formData.taxOffice,
-        tax_number: formData.taxNumber,
-        logo_url: finalLogoUrl,
-        db_host: formData.dbHost,
-        db_name: formData.dbName,
-        db_user: formData.dbUser,
-        db_pass: formData.dbPass,
-        admin_email: formData.adminEmail,
-        admin_pass: formData.adminPass,
-        license_end_date: formData.licenseEndDate,
-        is_active: formData.is_active,
-        auth_admin_id: authData.user?.id // Auth ID'sini de mühürle
-      })
+      .update(updateData)
       .eq('id', id);
 
     setSaving(false);
+
     if (error) {
-      Alert.alert('Güncelleme Hatası', error.message);
+       const msg = 'Güncelleme Hatası: ' + error.message;
+       if (Platform.OS === 'web') window.alert(msg);
+       else Alert.alert('Hata', msg);
     } else {
-      Alert.alert('Başarılı', 'Firma ve Yetkili bilgileri (Auth dahil) güncellendi.');
-      router.replace('/super-admin' as any);
+        let msg = 'Firma bilgileri başarıyla güncellendi. ✅';
+        if (authError && authError.message.includes('already registered')) {
+            msg += '\n\nNot: Bu e-posta zaten kayıtlı olduğu için şifre güvenliği nedeniyle Değiştirilmedi.';
+        } else if (authData.user) {
+            msg += '\n\nYeni Yönetici Hesabı Aktif Edildi! Artık giriş yapabilirsiniz.';
+        }
+        
+        if (Platform.OS === 'web') window.alert(msg);
+        else Alert.alert('Başarılı', msg);
+        
+        router.replace('/super-admin' as any);
     }
   };
 
