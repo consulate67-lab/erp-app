@@ -7,8 +7,12 @@ import {
   TouchableOpacity, 
   ScrollView,
   ActivityIndicator,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { supabase } from '../../lib/supabase';
+import { useEffect } from 'react';
 
 export default function AddUserScreen() {
   const [loading, setLoading] = useState(false);
@@ -20,8 +24,37 @@ export default function AddUserScreen() {
     phone: '',
     password: '',
     confirmPassword: '',
-    role: 'Şube Yetkilisi' // Opsiyonel ilerisi için
+    role: 'Şube Yetkilisi',
+    department: ''
   });
+
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [fetchingDeps, setFetchingDeps] = useState(false);
+
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  const fetchDepartments = async () => {
+    setFetchingDeps(true);
+    try {
+      // Önce Supabase'deki kayıtlı departmanları çekmeyi dene
+      const { data, error } = await supabase
+        .from('departments')
+        .select('name');
+      
+      if (data && data.length > 0) {
+        setDepartments(data.map(d => d.name));
+      } else {
+        // Eğer SQL bağlantısı yoksa ve tablo boşsa varsayılanları göster
+        setDepartments(['Satış', 'Muhasebe', 'Depo', 'Yönetim', 'Teknik Destek']);
+      }
+    } catch (err) {
+      setDepartments(['Satış', 'Muhasebe', 'Depo', 'Yönetim']);
+    } finally {
+      setFetchingDeps(false);
+    }
+  };
 
   const handleSave = () => {
     if (formData.password !== formData.confirmPassword) {
@@ -35,7 +68,7 @@ export default function AddUserScreen() {
       setLoading(false);
       Alert.alert('Başarılı', `${formData.fullName} isimli personel başarıyla sisteme eklendi!`);
       // Temizle
-      setFormData({ fullName: '', email: '', phone: '', password: '', confirmPassword: '', role: 'Şube Yetkilisi' });
+      setFormData({ fullName: '', email: '', phone: '', password: '', confirmPassword: '', role: 'Şube Yetkilisi', department: '' });
     }, 1500);
   };
 
@@ -79,6 +112,26 @@ export default function AddUserScreen() {
               value={formData.phone}
               onChangeText={t => setFormData({...formData, phone: t})}
             />
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Departman / Bölüm</Text>
+          <View style={styles.pickerContainer}>
+            {fetchingDeps ? (
+              <ActivityIndicator size="small" color="#3B82F6" style={{ marginLeft: 16 }} />
+            ) : (
+              <Picker
+                selectedValue={formData.department}
+                onValueChange={(val) => setFormData({...formData, department: val})}
+                style={styles.picker}
+              >
+                <Picker.Item label="Departman Seçiniz..." value="" color="#94A3B8" />
+                {departments.map((dep, index) => (
+                  <Picker.Item key={index} label={dep} value={dep} />
+                ))}
+              </Picker>
+            )}
           </View>
         </View>
 
@@ -188,6 +241,18 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+  pickerContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    minHeight: 50,
+    justifyContent: 'center',
+  },
+  picker: {
+    width: '100%',
+    height: 50,
   },
   infoText: {
     fontSize: 13,

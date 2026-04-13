@@ -217,8 +217,8 @@ export default function UserDefinitionScreen({ isTab = false, onSaved }: { isTab
                   style={styles.picker}
                 >
                   <Picker.Item label="Departman Seçiniz..." value="" color="#94A3B8" />
-                  {departments.map((dep) => (
-                    <Picker.Item key={dep.id} label={dep.name} value={dep.name} />
+                  {departments.map((dep, index) => (
+                    <Picker.Item key={dep.Dep_KOD || index} label={dep.Tanim} value={dep.Tanim} />
                   ))}
                 </Picker>
               </View>

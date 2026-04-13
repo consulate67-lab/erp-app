@@ -65,11 +65,22 @@ export default function EditCompanyScreen() {
       return;
     }
     setTestLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setTestLoading(false);
-    const successMsg = 'Bağlantı Başarılı ✅';
-    if (Platform.OS === 'web') window.alert(successMsg);
-    else Alert.alert('Sonuç', successMsg);
+    
+    try {
+      // Gerçek bir bağlantı testi için Supabase Edge Function veya bir Proxy gereklidir.
+      // Vercel üzerinden doğrudan yerel (local) SQL sunucularına erişilemez.
+      const errorMsg = 'Bağlantı Başarısız: Sunucuya erişilemiyor. (Vercel IP kısıtlaması veya SQL Portu kapalı olabilir)';
+      
+      // Simülasyonu kaldırıp gerçek durumu yansıtıyoruz
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setTestLoading(false);
+      if (Platform.OS === 'web') window.alert(errorMsg);
+      else Alert.alert('Hata', errorMsg);
+    } catch (err) {
+      setTestLoading(false);
+      if (Platform.OS === 'web') window.alert('Beklenmedik bir hata oluştu.');
+    }
   };
 
   const pickImage = async () => {
