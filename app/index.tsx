@@ -29,11 +29,11 @@ export default function LoginScreen() {
       Alert.alert('Giriş Başarısız', error.message);
     } else {
       // Basit Rol Kontrolü Simülasyonu
-      if (email.toLowerCase().includes('superadmin')) {
+      if (email.toLowerCase().includes('admin')) {
         router.replace('/super-admin' as any);
       } else {
-        // Firma Admini veya Personel ise Kullanıcı Tanıtım ekranına yönlendir
-        router.replace('/company-admin/users' as any);
+        // Firma Admini veya Personel ise Ana Panel'e yönlendir
+        router.replace('/company-admin' as any);
       }
     }
   }

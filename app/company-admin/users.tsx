@@ -16,7 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 
-export default function UserDefinitionScreen() {
+export default function UserDefinitionScreen({ isTab = false }: { isTab?: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -56,25 +56,28 @@ export default function UserDefinitionScreen() {
     setTimeout(() => {
       setLoading(false);
       Alert.alert('Başarılı', 'Kullanıcı tanımlaması başarıyla yapıldı.');
-      // router.back(); 
     }, 1500);
   };
 
+  const MainContainer = isTab ? View : ScrollView;
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <MainContainer style={isTab ? {} : styles.container} contentContainerStyle={isTab ? {} : styles.scrollContent}>
         
-        <View style={styles.header}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={styles.title}>Kullanıcı / Personel Tanıtımı</Text>
-            <TouchableOpacity onPress={() => router.replace('/')}>
-              <Text style={{ color: '#EF4444', fontWeight: '700' }}>Çıkış Yap</Text>
-            </TouchableOpacity>
+        {!isTab && (
+          <View style={styles.header}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.title}>Kullanıcı / Personel Tanıtımı</Text>
+              <TouchableOpacity onPress={() => router.replace('/')}>
+                <Text style={{ color: '#EF4444', fontWeight: '700' }}>Çıkış Yap</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.subtitle}>İşletme bünyesindeki kullanıcıların bilgilerini ve yetkilerini yönetin.</Text>
           </View>
-          <Text style={styles.subtitle}>İşletme bünyesindeki kullanıcıların bilgilerini ve yetkilerini yönetin.</Text>
-        </View>
+        )}
 
-        <View style={styles.card}>
+        <View style={[styles.card, isTab && { padding: 0, elevation: 0, shadowOpacity: 0 }]}>
           {/* Fotoğraf Bölümü */}
           <View style={styles.photoSection}>
             <TouchableOpacity style={styles.photoUploadBtn} onPress={pickImage}>
@@ -163,7 +166,7 @@ export default function UserDefinitionScreen() {
           </TouchableOpacity>
         </View>
 
-      </ScrollView>
+      </MainContainer>
     </KeyboardAvoidingView>
   );
 }
