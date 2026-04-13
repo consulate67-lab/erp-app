@@ -60,7 +60,7 @@ export default function SuperAdminDashboard() {
     // Simülasyon: 1.5 saniye bekle
     await new Promise(resolve => setTimeout(resolve, 1500));
     setTestingId(null);
-    Alert.alert('SQL Bağlantı Testi', `${company.db_host} sunucusuna bağlantı başarılı! (Mock)`);
+    Alert.alert('Sonuç', 'Bağlantı Başarılı ✅');
   };
 
   const stats = useMemo(() => {

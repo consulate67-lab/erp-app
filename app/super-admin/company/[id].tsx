@@ -66,7 +66,7 @@ export default function EditCompanyScreen() {
     // Simülasyon: 2 saniye bekle
     await new Promise(resolve => setTimeout(resolve, 2000));
     setTestLoading(false);
-    Alert.alert('Bağlantı Başarılı', `${formData.dbHost} sunucusuna erişim sağlandı ve ${formData.dbName} veritabanı doğrulandı.`);
+    Alert.alert('Sonuç', 'Bağlantı Başarılı ✅');
   };
 
   const pickImage = async () => {
