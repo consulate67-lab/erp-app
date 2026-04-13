@@ -113,6 +113,28 @@ export default function AddCompanyScreen() {
     }
 
     try {
+      // 1. ADIM: Supabase Auth sistemine kullanıcıyı kaydet (Eğer yoksa)
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.adminEmail,
+        password: formData.adminPass,
+        options: {
+          data: {
+            role: 'company_admin',
+            company_name: formData.name
+          }
+        }
+      });
+
+      if (authError) {
+        // Eğer kullanıcı zaten varsa devam edebiliriz, ama başka bir hata ise durdurmalıyız
+        if (!authError.message.includes('already registered')) {
+          setLoading(false);
+          setErrorMessage("Auth Hatası: " + authError.message);
+          return;
+        }
+      }
+
+      // 2. ADIM: Veritabanına Firma kaydını yap
       const { data, error } = await supabase
         .from('companies')
         .insert([
@@ -139,10 +161,9 @@ export default function AddCompanyScreen() {
       setLoading(false);
 
       if (error) {
-        console.error("Supabase Error Object:", error);
-        setErrorMessage(error.message || "Bilinmeyen bir Supabase kayıt hatası!");
+        setErrorMessage(error.message);
       } else {
-        setSuccessMessage('Firma ve Yönetici hesabı kaydedildi! Yönetim paneline yönlendiriliyorsunuz...');
+        setSuccessMessage('Firma başarıyla kuruldu ve Yönetici hesabı aktif edildi!');
         setTimeout(() => {
           router.replace('/super-admin' as any); 
         }, 1500);

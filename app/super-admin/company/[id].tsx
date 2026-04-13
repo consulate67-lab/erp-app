@@ -149,10 +149,21 @@ export default function EditCompanyScreen() {
   const handleSave = async () => {
     setSaving(true);
     
-    // Logo Güncelleme Simülasyonu
+    // 1. ADIM: Admin kullanıcısı Auth sisteminde yoksa oluştur (Onarım ve Hazırlık)
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: formData.adminEmail,
+      password: formData.adminPass,
+      options: {
+        data: {
+          role: 'company_admin',
+          company_name: formData.name
+        }
+      }
+    });
+
+    // 2. ADIM: Veritabanını Güncelle
     let finalLogoUrl = formData.logo_url;
     if (formData.logoBase64) {
-      // Gerçek projede burada Storage Upload yapılır
       finalLogoUrl = 'https://kctzgsipckflngluxhyh.supabase.co/storage/v1/object/public/company_logos/default_updated.png';
     }
 
@@ -174,7 +185,8 @@ export default function EditCompanyScreen() {
         admin_email: formData.adminEmail,
         admin_pass: formData.adminPass,
         license_end_date: formData.licenseEndDate,
-        is_active: formData.is_active
+        is_active: formData.is_active,
+        auth_admin_id: authData.user?.id // Auth ID'sini de mühürle
       })
       .eq('id', id);
 
@@ -182,7 +194,7 @@ export default function EditCompanyScreen() {
     if (error) {
       Alert.alert('Güncelleme Hatası', error.message);
     } else {
-      Alert.alert('Başarılı', 'Firma güncellendi, listeye dönülüyor...');
+      Alert.alert('Başarılı', 'Firma ve Yetkili bilgileri (Auth dahil) güncellendi.');
       router.replace('/super-admin' as any);
     }
   };
