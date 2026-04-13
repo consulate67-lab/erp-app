@@ -150,21 +150,20 @@ export default function EditCompanyScreen() {
     setSaving(true);
     
     try {
-      // 1. ADIM: Admin kullanıcısını Auth sistemine kaydet (Gerekliyse)
+      // 1. ADIM: Auth Kaydı Denemesi
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.adminEmail,
         password: formData.adminPass,
-        options: {
-          data: { role: 'company_admin', company_id: id }
-        }
       });
 
-      // 2. ADIM: Veritabanı ID Belirleme
-      // Eğer kullanıcı zaten varsa authData.user boş gelebilir, 
-      // bu yüzden mevcuttaki auth_admin_id'yi de yedekte tutmalıyız.
-      let finalAuthId = authData.user?.id;
+      // Zaten kayıtlı hatası bir engel değil, diğerlerini kontrol et
+      if (authError && !authError.message.includes('already registered')) {
+        throw new Error('Auth Hatası: ' + authError.message);
+      }
 
-      // 3. ADIM: Companies Tablosunu Güncelle
+      const finalAuthId = authData.user?.id;
+
+      // 2. ADIM: Companies Tablosunu Güncelle
       const companyUpdate: any = {
         name: formData.name,
         country: formData.country,
@@ -174,58 +173,46 @@ export default function EditCompanyScreen() {
         tax_office: formData.taxOffice,
         tax_number: formData.taxNumber,
         logo_url: formData.logo_url,
-        db_host: formData.dbHost,
-        db_name: formData.dbName,
-        db_user: formData.dbUser,
-        db_pass: formData.dbPass,
         admin_email: formData.adminEmail,
         admin_pass: formData.adminPass,
         license_end_date: formData.licenseEndDate,
         is_active: formData.is_active,
       };
 
-      if (finalAuthId) {
-        companyUpdate.auth_admin_id = finalAuthId;
-      }
+      if (finalAuthId) companyUpdate.auth_admin_id = finalAuthId;
 
       const { error: compError } = await supabase
         .from('companies')
         .update(companyUpdate)
         .eq('id', id);
 
-      // 4. ADIM: Staff (Personel) Tablosuna Admin Kaydı At (Veya Güncelle)
-      if (finalAuthId || formData.adminEmail) {
-        // İsmi parçala (varsayılan değerler için)
-        const nameParts = formData.name.split(' ');
-        
-        await supabase.from('staff').upsert({
-          company_id: id,
-          email: formData.adminEmail,
-          first_name: 'Firma',
-          last_name: 'Yöneticisi',
-          department: 'Yönetim',
-          role: 'admin',
-          is_active: true
-        }, { onConflict: 'email' });
-      }
+      if (compError) throw new Error('Şirket Güncelleme Hatası: ' + compError.message);
+
+      // 3. ADIM: Staff (Personel) Tablosuna Admin Kaydı
+      const { error: staffError } = await supabase.from('staff').upsert({
+        company_id: id,
+        email: formData.adminEmail,
+        first_name: 'Firma',
+        last_name: 'Yöneticisi',
+        department: 'Yönetim',
+        role: 'admin',
+        is_active: true
+      }, { onConflict: 'email' });
+
+      if (staffError) throw new Error('Personel Kayıt Hatası: ' + staffError.message);
 
       setSaving(false);
-
-      let msg = 'İşlem Başarılı! ✅\n\n- Firma bilgileri güncellendi.\n- Personel kaydı yapıldı.';
-      if (authError && authError.message.includes('already registered')) {
-          msg += '\n- Auth: Kullanıcı zaten kayıtlı.';
-      } else if (authData.user) {
-          msg += '\n- Auth: Yeni kullanıcı başarıyla açıldı.';
-      }
-
-      if (Platform.OS === 'web') window.alert(msg);
-      else Alert.alert('Sonuç', msg);
+      const successMsg = 'İşlem Tamamen Başarılı! ✅\n\n1. Firma Güncellendi\n2. Auth Kontrol Edildi\n3. Personel Kaydı Mühürlendi.';
+      
+      if (Platform.OS === 'web') window.alert(successMsg);
+      else Alert.alert('Başarılı', successMsg);
       
       router.replace('/super-admin' as any);
 
     } catch (err: any) {
       setSaving(false);
-      if (Platform.OS === 'web') window.alert('Hata: ' + err.message);
+      console.error("KRİTİK HATA:", err.message);
+      if (Platform.OS === 'web') window.alert(err.message);
       else Alert.alert('Hata', err.message);
     }
   };
