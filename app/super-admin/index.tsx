@@ -163,12 +163,20 @@ export default function SuperAdminDashboard() {
             <Text style={styles.title}>ERP Kontrol Merkezi</Text>
             <Text style={styles.subtitle}>Sistem genelindeki tüm şirketlerin canlı takibi</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.addBtn}
-            onPress={() => router.push('/super-admin/add-company' as any)}
-          >
-            <Text style={styles.addBtnText}>+ Yeni Şirket Ekle</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity 
+              style={[styles.addBtn, { backgroundColor: '#F1F5F9' }]}
+              onPress={() => router.replace('/')}
+            >
+              <Text style={[styles.addBtnText, { color: '#475569' }]}>Çıkış Yap</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.addBtn}
+              onPress={() => router.push('/super-admin/add-company' as any)}
+            >
+              <Text style={styles.addBtnText}>+ Yeni Şirket Ekle</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 

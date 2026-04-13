@@ -65,7 +65,12 @@ export default function UserDefinitionScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         
         <View style={styles.header}>
-          <Text style={styles.title}>Kullanıcı / Personel Tanıtımı</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={styles.title}>Kullanıcı / Personel Tanıtımı</Text>
+            <TouchableOpacity onPress={() => router.replace('/')}>
+              <Text style={{ color: '#EF4444', fontWeight: '700' }}>Çıkış Yap</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.subtitle}>İşletme bünyesindeki kullanıcıların bilgilerini ve yetkilerini yönetin.</Text>
         </View>
 

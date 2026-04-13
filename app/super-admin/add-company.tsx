@@ -159,7 +159,12 @@ export default function AddCompanyScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         
         <View style={styles.header}>
-          <Text style={styles.title}>Yeni Firma Kurulumu</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={styles.title}>Yeni Firma Kurulumu</Text>
+            <TouchableOpacity onPress={() => router.replace('/')}>
+              <Text style={{ color: '#EF4444', fontWeight: '700' }}>Çıkış Yap</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.subtitle}>ERP platformuna yeni bir işletme entegre edin.</Text>
         </View>
 
