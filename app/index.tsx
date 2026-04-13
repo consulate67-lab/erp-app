@@ -8,14 +8,11 @@ import {
   KeyboardAvoidingView, 
   Platform, 
   ImageBackground,
-  Dimensions,
   ActivityIndicator,
   Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
-
-const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -110,8 +107,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   backgroundImage: {
-    width: width,
-    height: height,
+    flex: 1,
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },

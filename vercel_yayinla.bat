@@ -16,7 +16,7 @@ echo [2/3] Degisiklikler paketleniyor...
 git commit -m "%msg%"
 
 echo [3/3] Kodlar Github ve Vercel'e firlatiliyor...
-git push
+git push origin main
 
 echo.
 echo ===================================================
