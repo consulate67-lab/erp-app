@@ -30,6 +30,8 @@ export default function AddCompanyScreen() {
   const [loading, setLoading] = useState(false);
   const [cities, setCities] = useState<City[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Gelecek seneyi hesapla (Varsayılan Lisans Bitiş)
   const defaultEndDate = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0];
@@ -94,8 +96,11 @@ export default function AddCompanyScreen() {
   }, [formData.city]);
 
   const handleSave = async () => {
+    setErrorMessage('');
+    setSuccessMessage('');
+    
     if (!formData.name || !formData.adminEmail || !formData.adminPass || !formData.licenseEndDate) {
-      Alert.alert('Eksik Bilgi', 'Firma Adı, Admin E-Posta, Şifre ve Bitiş Tarihi alanları zorunludur.');
+      setErrorMessage('Firma Adı, Admin E-Posta, Şifre ve Bitiş Tarihi zorunludur.');
       return;
     }
 
@@ -107,36 +112,45 @@ export default function AddCompanyScreen() {
       logoStorageUrl = 'https://kctzgsipckflngluxhyh.supabase.co/storage/v1/object/public/company_logos/default.png';
     }
 
-    const { data, error } = await supabase
-      .from('companies')
-      .insert([
-        { 
-          name: formData.name, 
-          country: formData.country,
-          city: formData.city,
-          district: formData.district,
-          street_address: formData.address,
-          tax_office: formData.taxOffice,
-          tax_number: formData.taxNumber,
-          logo_url: logoStorageUrl,
-          db_host: formData.dbHost,
-          db_name: formData.dbName,
-          db_user: formData.dbUser,
-          db_pass: formData.dbPass,
-          admin_email: formData.adminEmail,
-          admin_pass: formData.adminPass, // Not: Supabase sütunlarına bu yapılar eklenmeli
-          license_start_date: new Date().toISOString().split('T')[0],
-          license_end_date: formData.licenseEndDate
-        }
-      ]);
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .insert([
+          { 
+            name: formData.name, 
+            country: formData.country,
+            city: formData.city,
+            district: formData.district,
+            street_address: formData.address,
+            tax_office: formData.taxOffice,
+            tax_number: formData.taxNumber,
+            logo_url: logoStorageUrl,
+            db_host: formData.dbHost,
+            db_name: formData.dbName,
+            db_user: formData.dbUser,
+            db_pass: formData.dbPass,
+            admin_email: formData.adminEmail,
+            admin_pass: formData.adminPass,
+            license_start_date: new Date().toISOString().split('T')[0],
+            license_end_date: formData.licenseEndDate
+          }
+        ]);
 
-    setLoading(false);
+      setLoading(false);
 
-    if (error) {
-      Alert.alert('Kayıt Başarısız', error.message);
-    } else {
-      Alert.alert('Başarılı', 'Firma ve Yönetici hesabı Supabase veritabanına kaydedildi!');
-      router.replace('/super-admin' as any); 
+      if (error) {
+        console.error("Supabase Error Object:", error);
+        setErrorMessage(error.message || "Bilinmeyen bir Supabase kayıt hatası!");
+      } else {
+        setSuccessMessage('Firma ve Yönetici hesabı kaydedildi! Yönetim paneline yönlendiriliyorsunuz...');
+        setTimeout(() => {
+          router.replace('/super-admin' as any); 
+        }, 1500);
+      }
+    } catch (e: any) {
+      setLoading(false);
+      console.error("CATCH Error:", e);
+      setErrorMessage(e.message || "Beklenmeyen sistemsel bir hata oluştu.");
     }
   };
 
@@ -281,6 +295,18 @@ export default function AddCompanyScreen() {
               <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Firmayı Kaydet & Sistemi Kur</Text>}
               </TouchableOpacity>
+              
+              {errorMessage ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>Hata: {errorMessage}</Text>
+                </View>
+              ) : null}
+
+              {successMessage ? (
+                <View style={[styles.errorBox, { backgroundColor: '#D1FAE5', borderColor: '#10B981' }]}>
+                  <Text style={[styles.errorText, { color: '#047857' }]}>{successMessage}</Text>
+                </View>
+              ) : null}
             </View>
           </View>
         </View>
@@ -353,5 +379,18 @@ const styles = StyleSheet.create({
     shadowRadius: 15,
     elevation: 5,
   },
-  saveButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' }
+  saveButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  errorBox: {
+    marginTop: 15,
+    padding: 15,
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    borderRadius: 8,
+  },
+  errorText: {
+    color: '#B91C1C',
+    fontSize: 14,
+    fontWeight: '600'
+  }
 });
