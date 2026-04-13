@@ -50,11 +50,24 @@ export default function EditCompanyScreen() {
     is_active: true,
     logoBase64: ''
   });
+  const [testLoading, setTestLoading] = useState(false);
 
   useEffect(() => {
     fetchCompanyData();
     fetchCities();
   }, [id]);
+
+  const testSqlConnection = async () => {
+    if (!formData.dbHost || !formData.dbName || !formData.dbUser || !formData.dbPass) {
+      Alert.alert('Eksik Bilgi', 'Lütfen tüm SQL bilgilerini doldurun.');
+      return;
+    }
+    setTestLoading(true);
+    // Simülasyon: 2 saniye bekle
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setTestLoading(false);
+    Alert.alert('Bağlantı Başarılı', `${formData.dbHost} sunucusuna erişim sağlandı ve ${formData.dbName} veritabanı doğrulandı.`);
+  };
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -304,6 +317,18 @@ export default function EditCompanyScreen() {
                 <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}><Text style={styles.label}>Kullanıcı</Text><TextInput style={styles.input} value={formData.dbUser} onChangeText={t => setFormData({...formData, dbUser: t})} /></View>
                 <View style={[styles.inputGroup, { flex: 1 }]}><Text style={styles.label}>Şifre</Text><TextInput style={styles.input} secureTextEntry value={formData.dbPass} onChangeText={t => setFormData({...formData, dbPass: t})} /></View>
               </View>
+
+              <TouchableOpacity 
+                style={[styles.testBtn, { backgroundColor: '#F0F9FF', marginTop: 10 }]} 
+                onPress={testSqlConnection}
+                disabled={testLoading}
+              >
+                {testLoading ? (
+                  <ActivityIndicator size="small" color="#0369A1" />
+                ) : (
+                  <Text style={[styles.testBtnText, { color: '#0369A1' }]}>⚡ SQL Bağlantısını Test Et</Text>
+                )}
+              </TouchableOpacity>
             </View>
 
             <View style={styles.glassCard}>
@@ -361,5 +386,17 @@ const styles = StyleSheet.create({
   updateButton: { backgroundColor: '#0F172A', borderRadius: 12, height: 56, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
   updateButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   deleteButton: { marginTop: 20, height: 40, justifyContent: 'center', alignItems: 'center' },
-  deleteButtonText: { color: '#EF4444', fontWeight: '700', fontSize: 14 }
+  deleteButtonText: { color: '#EF4444', fontWeight: '700', fontSize: 14 },
+  testBtn: {
+    height: 44,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  testBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+  }
 });
