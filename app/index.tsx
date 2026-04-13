@@ -7,11 +7,12 @@ import {
   TouchableOpacity, 
   KeyboardAvoidingView, 
   Platform, 
-  ActivityIndicator,
   ImageBackground,
   Dimensions,
+  ActivityIndicator,
   Alert
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 
 const { width, height } = Dimensions.get('window');
@@ -20,6 +21,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   async function signInWithEmail() {
     setLoading(true);
@@ -29,7 +31,7 @@ export default function LoginScreen() {
     if (error) {
       Alert.alert('Giriş Başarısız', error.message);
     } else {
-      Alert.alert('Başarılı', 'Giriş işlemi tamamlandı!');
+      router.replace('/super-admin' as any);
     }
   }
 
